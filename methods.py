@@ -99,6 +99,23 @@ def action(api, user):
             data['prospects'][user['username']]['time'] = datetime.now().strftime(c.DATE_FMT)
             data['prospects'][user['username']]['followed_back'] = False
 
+            ##### COMMENT
+            if c.ACTION == 'comment' or c.ACTION == 'both':
+                response = 0
+                index = 0
+                comment = constructComment()
+                response = api.comment(str(photos[index]['pk']), comment)
+                if response == 200:
+                    addLog('OK   ', 'COMMENTED ' + comment)
+                    data['prospects'][user['username']]['comment'] = comment
+                    data['prospects'][user['username']]['photo'] = 'instagram.com/p/' + photos[index]['code']
+                    wait = randint(c.SLEEP_MIN, c.SLEEP_MAX)
+                    addLog('OK   ', 'SLEEPING ' + repr(wait) + 's')
+                    sleep(wait)
+                else:
+                    addLog('ERROR', 'COULDNT COMMENT')
+                    return False
+
             ##### LIKES
             if c.ACTION == 'like' or c.ACTION == 'both':
                 liked = []
@@ -122,19 +139,6 @@ def action(api, user):
                         err += 1
                 data['prospects'][user['username']]['liked'] = i - err
 
-            ##### COMMENT
-            if c.ACTION == 'comment' or c.ACTION == 'both':
-                response = 0
-                index = 0
-                comment = constructComment()
-                while response != 200 or (index + 1) < len(photos):
-                    response = api.comment(str(photos[index]['pk']), comment)
-                    if response == 200:
-                        addLog('OK   ', 'COMMENTED ' + comment)
-                        data['prospects'][user['username']]['comment'] = comment
-                        data['prospects'][user['username']]['photo'] = 'instagram.com/p/' + photos[index]['code']
-                    else:
-                        index += 1
 
             updateData(data)
             return True

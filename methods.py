@@ -110,9 +110,8 @@ def action(api, user):
                     maxLike = c.MAX_LIKE
                     minLike = c.MIN_LIKE
                 for i in range(randint(minLike, maxLike)):
-                    else:
-                        post = photos[i]
-                        post_id = post['pk']
+                    post = photos[i]
+                    post_id = post['pk']
                     response = api.like(str(post_id))
                     if response == 200:
                         addLog('OK   ', 'LIKED ' + repr(i + 1) + ' PHOTO')

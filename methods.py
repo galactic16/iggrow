@@ -1,5 +1,5 @@
 import client as c
-from datetime import datetime
+from datetime import datetime, timedelta
 from time import sleep
 from random import choice, randint, shuffle
 import os
@@ -96,7 +96,7 @@ def action(api, user):
         if photos:
 
             data['prospects'][user['username']] = {}
-            data['prospects'][user['username']]['time'] = datetime.now().strftime(c.DATE_FMT)
+            data['prospects'][user['username']]['time'] = (datetime.now() - timedelta(minutes=5)).strftime(c.DATE_FMT)
             data['prospects'][user['username']]['followed_back'] = False
 
             ##### COMMENT
@@ -109,9 +109,11 @@ def action(api, user):
                     addLog('OK   ', 'COMMENTED ' + comment)
                     data['prospects'][user['username']]['comment'] = comment
                     data['prospects'][user['username']]['photo'] = 'instagram.com/p/' + photos[index]['code']
-                    wait = randint(c.SLEEP_MIN, c.SLEEP_MAX)
-                    addLog('OK   ', 'SLEEPING ' + repr(wait) + 's')
-                    sleep(wait)
+                    data['prospects'][user['username']]['confirmed'] = False
+                    data['prospects'][user['username']]['photo_id'] = photos[index]['pk']
+                    # wait = randint(c.SLEEP_MIN, c.SLEEP_MAX)
+                    # addLog('OK   ', 'SLEEPING ' + repr(wait) + 's')
+                    # sleep(wait)
                 else:
                     addLog('ERROR', 'COULDNT COMMENT')
                     return False
@@ -148,6 +150,48 @@ def action(api, user):
     else:
         addLog('ERROR', 'COULDNT FETCH USER FEED')
         return False
+
+def checkLastAction(apiCheck, user):
+    data = getData()
+    ##### RETRIEVE COMMENT ON POST
+    has_more_comments = True
+    max_id = ''
+    comments = []
+    utc_timedelta = datetime.utcnow() - datetime.now()
+    while has_more_comments:
+        _ = apiCheck.getMediaComments(data['prospects'][user['username']]['photo_id'], max_id=max_id)
+        if 'comments' in apiCheck.LastJson:
+            for cmt in reversed(apiCheck.LastJson['comments']):
+                comments.append(cmt)
+        else:
+            addLog('ERR', 'COULDNT FETCH COMMENTS')
+            print(apiCheck.LastJson)
+        has_more_comments = apiCheck.LastJson.get('has_more_comments', False)
+        older_comment = comments[-1]
+        dt = datetime.utcfromtimestamp(older_comment.get('created_at_utc', 0))
+        until_time = (datetime.strptime(data['prospects'][user['username']]['time'], c.DATE_FMT) + utc_timedelta)
+        if dt <= until_time:
+            comments = [
+                cmt
+                for cmt in comments
+                if datetime.utcfromtimestamp(cmt.get('created_at_utc', 0)) > until_time
+            ]
+            has_more_comments = False
+        if has_more_comments:
+            max_id = apiCheck.LastJson.get('next_max_id', '')
+            sleep(1)
+    found = False
+    for cmt in comments:
+        if data['prospects'][user['username']]['comment'] == cmt['text']:
+            found = True
+            break
+    if found:
+        data['prospects'][user['username']]['confirmed'] = True
+        updateData(data)
+        return True
+    else:
+        return False
+
 
 def constructComment():
     comment = ''

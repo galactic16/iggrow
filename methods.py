@@ -159,7 +159,7 @@ def checkLastAction(apiCheck, user):
     comments = []
     utc_timedelta = datetime.utcnow() - datetime.now()
     while has_more_comments:
-        _ = apiCheck.getMediaComments(data['prospects'][user['username']]['photo_id'], max_id=max_id)
+        _ = apiCheck.getMediaComments(str(data['prospects'][user['username']]['photo_id']), max_id=max_id)
         if 'comments' in apiCheck.LastJson:
             for cmt in reversed(apiCheck.LastJson['comments']):
                 comments.append(cmt)
@@ -167,7 +167,10 @@ def checkLastAction(apiCheck, user):
             addLog('ERR', 'COULDNT FETCH COMMENTS')
             print(apiCheck.LastJson)
         has_more_comments = apiCheck.LastJson.get('has_more_comments', False)
-        older_comment = comments[-1]
+        if comments:
+            older_comment = comments[-1]
+        else:
+            break
         dt = datetime.utcfromtimestamp(older_comment.get('created_at_utc', 0))
         until_time = (datetime.strptime(data['prospects'][user['username']]['time'], c.DATE_FMT) + utc_timedelta)
         if dt <= until_time:
